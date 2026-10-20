@@ -156,8 +156,8 @@ let items = JSON.parse(localStorage.getItem(KEY)) || [];
 let filter = 'all';
 
 // ===== KONFIGURASI SYNC GOOGLE SHEET =====
-const SYNC_URL = 'PASTE_URL_WEB_APP_DI_SINI'; // dari Deploy Apps Script
-const SYNC_TOKEN = 'ganti-dengan-kode-rahasia-kamu'; // sama dengan TOKEN di Code.gs
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwy-T02pQJKux5VOEix6b2icOjGRBFwxc6zpYB-UGNkakRgbHcicKGyi3BSuPNfyBn6/exec'; // dari Deploy Apps Script
+const SYNC_TOKEN = 'Qwerty46!'; // sama dengan TOKEN di Code.gs
 
 function setSyncState(msg, ok) {
   const el = document.getElementById('syncState');
