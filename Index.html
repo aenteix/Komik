@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading List Komik</title>
+<style>
+  :root {
+    --bg: #f6f6f7;
+    --card: #ffffff;
+    --text: #1c1c1e;
+    --muted: #8e8e93;
+    --border: #e5e5ea;
+    --accent: #1c1c1e;
+    --danger: #ff453a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161617;
+      --card: #1f1f21;
+      --text: #f2f2f5;
+      --muted: #8e8e93;
+      --border: #333336;
+      --accent: #f2f2f5;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+  .container { max-width: 560px; margin: 0 auto; }
+
+  header { margin-bottom: 20px; }
+  h1 { font-size: 20px; font-weight: 600; }
+  .subtitle { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* form */
+  form {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; margin-bottom: 16px;
+  }
+  form input, form select, form button {
+    font: inherit; border-radius: 8px; border: 1px solid var(--border);
+    padding: 8px 10px; background: transparent; color: var(--text);
+  }
+  form input { flex: 1 1 100%; }
+  form select { flex: 1; min-width: 0; }
+  form input.chapter { flex: 0 0 90px; }
+  form button {
+    flex: 1; background: var(--accent); color: var(--bg);
+    border: none; cursor: pointer; font-weight: 600;
+  }
+  form button:hover { opacity: .85; }
+
+  .backup { display: flex; gap: 8px; margin-bottom: 16px; }
+  .backup button {
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--card); color: var(--text);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .backup button:hover { background: var(--border); }
+
+  /* filter */
+  .filter { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filter button {
+    font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 99px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .filter button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* list */
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px;
+  }
+  .info { flex: 1; min-width: 0; }
+  .info .title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+    border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge.ongoing { color: #0a84ff; border-color: #0a84ff55; background: #0a84ff12; }
+  .badge.completed { color: #30d158; border-color: #30d15855; background: #30d15812; }
+  .badge.hiatus { color: #b8860b; border-color: #ffd60a55; background: #ffd60a12; }
+  .badge.dropped { color: #ff453a; border-color: #ff453a55; background: #ff453a12; }
+
+  .chapter-ctrl { display: flex; align-items: center; gap: 4px; }
+  .chapter-ctrl button {
+    font: inherit; width: 28px; height: 28px; border-radius: 8px;
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+    cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .chapter-ctrl button:hover { background: var(--border); }
+  .chapter-ctrl .num { font-size: 13px; min-width: 44px; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .icon-btn {
+    font: inherit; width: 28px; height: 28px; border-radius: 8px;
+    border: none; background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--border); color: var(--text); }
+  .icon-btn.delete:hover { color: #ff453a; }
+
+  .empty { text-align: center; color: var(--muted); font-size: 13px; padding: 40px 0; }
+  .count { font-size: 12px; color: var(--muted); margin-top: 16px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📖 Reading List Komik</h1>
+    <div class="subtitle">Lacak komik yang sedang dan pernah kamu baca</div>
+    <div class="subtitle" id="syncState" style="margin-top:4px;">☁️ Mode lokal (sync belum diatur)</div>
+  </header>
+
+  <form id="addForm">
+    <input type="text" id="fTitle" placeholder="Judul (misal: Solo Leveling)" required>
+    <input type="number" class="chapter" id="fChapter" placeholder="Ch. terakhir" min="0" value="0">
+    <select id="fStatus">
+      <option value="ongoing">Ongoing</option>
+      <option value="completed">Completed</option>
+      <option value="hiatus">Hiatus</option>
+      <option value="dropped">Dropped</option>
+    </select>
+    <button type="submit">+ Tambah</button>
+  </form>
+
+  <div class="backup">
+    <button type="button" onclick="exportJSON()">💾 Export JSON</button>
+    <button type="button" onclick="document.getElementById('importFile').click()">📂 Import JSON</button>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
+  </div>
+
+  <div class="filter" id="filterBar">
+    <button data-filter="all" class="active">Semua</button>
+    <button data-filter="ongoing">Ongoing</button>
+    <button data-filter="completed">Completed</button>
+    <button data-filter="hiatus">Hiatus</button>
+    <button data-filter="dropped">Dropped</button>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="count" id="count"></div>
+</div>
+
+<script>
+const KEY = 'readingList';
+let items = JSON.parse(localStorage.getItem(KEY)) || [];
+let filter = 'all';
+
+// ===== KONFIGURASI SYNC GOOGLE SHEET =====
+const SYNC_URL = 'PASTE_URL_WEB_APP_DI_SINI'; // dari Deploy Apps Script
+const SYNC_TOKEN = 'ganti-dengan-kode-rahasia-kamu'; // sama dengan TOKEN di Code.gs
+
+function setSyncState(msg, ok) {
+  const el = document.getElementById('syncState');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = ok === false ? 'var(--danger, #ff453a)' : 'var(--muted)';
+}
+
+async function cloudLoad() {
+  if (!SYNC_URL.startsWith('http')) return; // belum dikonfigurasi
+  setSyncState('☁️ Sinkronisasi...');
+  try {
+    const res = await fetch(SYNC_URL + '?token=' + encodeURIComponent(SYNC_TOKEN));
+    const data = await res.json();
+    if (Array.isArray(data)) { items = data; save(); render(); setSyncState('☁️ Tersinkron dengan Google Sheet'); }
+    else setSyncState('☁️ Gagal sync: ' + (data.error || 'unknown'), false);
+  } catch (err) { setSyncState('☁️ Offline — memakai data lokal', false); }
+}
+
+async function cloudSave() {
+  if (!SYNC_URL.startsWith('http')) return;
+  setSyncState('☁️ Menyimpan ke Sheet...');
+  try {
+    const res = await fetch(SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // hindari preflight CORS
+      body: JSON.stringify({ token: SYNC_TOKEN, items })
+    });
+    const data = await res.json();
+    if (data.ok) setSyncState('☁️ Tersinkron dengan Google Sheet');
+    else setSyncState('☁️ Gagal sync: ' + (data.error || 'unknown'), false);
+  } catch (err) { setSyncState('☁️ Offline — tersimpan lokal', false); }
+}
+
+const save = () => {
+  localStorage.setItem(KEY, JSON.stringify(items));
+  cloudSave(); // otomatis kirim ke Google Sheet
+};
+
+const statusLabel = { ongoing: 'Ongoing', completed: 'Completed', hiatus: 'Hiatus', dropped: 'Dropped' };
+
+function render() {
+  const list = document.getElementById('list');
+  const filtered = filter === 'all' ? items : items.filter(i => i.status === filter);
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty">Belum ada judul di kategori ini.<br>Tambahkan lewat form di atas 👆</div>';
+  } else {
+    list.innerHTML = filtered.map(i => `
+      <div class="item" data-id="${i.id}">
+        <div class="info">
+          <div class="title">${esc(i.title)}</div>
+          <div class="meta">${i.type} · Terakhir dibaca: Ch. ${i.chapter}</div>
+        </div>
+        <span class="badge ${i.status}">${statusLabel[i.status]}</span>
+        <div class="chapter-ctrl">
+          <button onclick="changeChapter(${i.id}, -1)" title="Kurangi">−</button>
+          <span class="num">Ch. ${i.chapter}</span>
+          <button onclick="changeChapter(${i.id}, 1)" title="Tambah">+</button>
+        </div>
+        <button class="icon-btn" onclick="cycleStatus(${i.id})" title="Ganti status">⟳</button>
+        <button class="icon-btn delete" onclick="removeItem(${i.id})" title="Hapus">✕</button>
+      </div>
+    `).join('');
+  }
+
+  const ongoing = items.filter(i => i.status === 'ongoing').length;
+  const readCh = items.reduce((s, i) => s + i.chapter, 0);
+  document.getElementById('count').textContent =
+    `${items.length} judul · ${ongoing} ongoing · total ${readCh} chapter dibaca`;
+}
+
+const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+document.getElementById('addForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) return;
+  items.unshift({
+    id: Date.now(),
+    title,
+    type: 'Komik',
+    chapter: Math.max(0, parseInt(document.getElementById('fChapter').value) || 0),
+    status: document.getElementById('fStatus').value
+  });
+  save(); render(); e.target.reset();
+  document.getElementById('fChapter').value = 0;
+});
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'reading-list.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('format salah');
+      items = data.map((d, i) => ({
+        id: d.id ?? Date.now() + i,
+        title: String(d.title ?? ''),
+        type: 'Komik',
+        chapter: Math.max(0, parseInt(d.chapter) || 0),
+        status: ['ongoing','completed','hiatus','dropped'].includes(d.status) ? d.status : 'ongoing'
+      })).filter(d => d.title);
+      save(); render();
+      alert('Import berhasil: ' + items.length + ' judul dimuat.');
+    } catch (err) {
+      alert('File tidak valid: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('filterBar').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  filter = e.target.dataset.filter;
+  document.querySelectorAll('#filterBar button').forEach(b => b.classList.toggle('active', b === e.target));
+  render();
+});
+
+function changeChapter(id, delta) {
+  const it = items.find(i => i.id === id);
+  if (it) { it.chapter = Math.max(0, it.chapter + delta); save(); render(); }
+}
+
+function cycleStatus(id) {
+  const order = ['ongoing', 'completed', 'hiatus', 'dropped'];
+  const it = items.find(i => i.id === id);
+  if (it) { it.status = order[(order.indexOf(it.status) + 1) % order.length]; save(); render(); }
+}
+
+function removeItem(id) {
+  items = items.filter(i => i.id !== id);
+  save(); render();
+}
+
+render();
+cloudLoad();
+</script>
+</body>
+</html>
